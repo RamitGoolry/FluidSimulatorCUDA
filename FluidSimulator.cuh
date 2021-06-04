@@ -40,13 +40,6 @@ __global__ void advect(float* initD, float* currD, vec2* currV, unsigned char * 
     float t0 = 1 - t1;
 
     currD[offset] = s0 * (currD[IX(i0, j0)] * t0 + currD[IX(i0, j1)] * t1) + s1 * (currD[IX(i1, j0)] * t0 + currD[IX(i1, j1)] * t1);
-
-    unsigned char grey = currD[offset] * 255;
-
-    bitmap[(offset << 2) + 0] = grey; 
-    bitmap[(offset << 2) + 1] = grey;
-    bitmap[(offset << 2) + 2] = grey;
-    bitmap[(offset << 2) + 3] = (unsigned char) 255;
 }
 
 __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char* bitmap) {
@@ -67,13 +60,6 @@ __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char*
 
     currD[offset] = initD[offset] + a * (prevD[top] + prevD[bottom] + 
             prevD[left] + prevD[right]) / (1.0 + 4.0 * a);
-
-    unsigned char grey = currD[offset] * 255;
-
-    bitmap[(offset << 2) + 0] = grey; 
-    bitmap[(offset << 2) + 1] = grey;
-    bitmap[(offset << 2) + 2] = grey;
-    bitmap[(offset << 2) + 3] = (unsigned char) 255;
 }
 
 #endif

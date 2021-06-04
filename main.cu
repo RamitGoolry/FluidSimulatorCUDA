@@ -18,13 +18,18 @@ struct DataBlock {
 	}
 };
 
-__global__ void copy_kernel(float * iptr, const float * cptr) {	
+__global__ void copy_density_to_bitmap(unsigned char * bitmap, const float * density) {	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
 	int offset = x + y * blockDim.x * gridDim.x;
+
+	unsigned char grey = density[offset] * 255;
  
-	iptr[offset] = cptr[offset]; // NOTE Test Speed vs when added if (cptr[offset] != 0)
+	bitmap[(offset * 4) + 0] = grey;
+	bitmap[(offset * 4) + 1] = grey;
+	bitmap[(offset * 4) + 2] = grey;
+	bitmap[(offset * 4) + 3] = 255;
 }
 
 void navier_step(DataBlock * d, int ticks) {
@@ -32,9 +37,13 @@ void navier_step(DataBlock * d, int ticks) {
 	dim3 blocks(Field::DIM/16, Field::DIM/16);
 	dim3 threads(16, 16);
 
-	// kernel -> diffuse and advect
+	// Diffusion
 	// diffuse<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
-	advect<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->cuField->velocity, d->dev_bitmap);
+
+	// Advection
+	// advect<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->cuField->velocity, d->dev_bitmap);
+
+	// copy_density_to_bitmap<<<blocks, threads>>> (d->dev_bitmap, d->cuField->density);
 
 	CuField * temp = d->cuField;
 	d->cuField = d->prev_cuField;
