@@ -19,6 +19,7 @@ __global__ void kernel(unsigned char *ptr, int ticks) {
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
 	int offset = x + y * blockDim.x * gridDim.x;
+
 }
 
 void navier_step(DataBlock * d, int ticks) { 

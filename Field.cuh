@@ -9,20 +9,12 @@
 struct Field {
 	vec2* velocity;
 	float* density;
-	
-	vec2 cellSize;
 
 	const static int DIM = 640;
 
 	Field() {
-		float width = DIM;
-		float height = DIM;
-
 		velocity = (vec2 *) malloc(DIM * DIM * sizeof(vec2));
 		density = (float *) malloc(DIM * DIM * sizeof(vec2));
-
-		cellSize.x = width / DIM;
-		cellSize.y = height / DIM;
 
 		std::default_random_engine generator;
 		std::uniform_real_distribution<float> dist(-0.5f, 0.5f);
@@ -41,8 +33,8 @@ struct Field {
 	}
 
 	int toIndex(float x, float y) {
-		int i = (int) (x / cellSize.x);
-		int j = (int) (y / cellSize.y);
+		int i = (int) x;
+		int j = (int) y;
 		
 		if (i < 0 || j < 0) return -1;
 		if (i >= DIM || j >= DIM) return -1;
@@ -54,7 +46,7 @@ struct Field {
 		float x = i / DIM;
 		float y = j / DIM;
 	
-		return vec2((float) ((x + 0.5f) * cellSize.x), (float) ((y + 0.5f) * cellSize.y));
+		return vec2((float) (x + 0.5f) , (float) (y + 0.5f));
 	}
 
 	vec2 getVelocity(int i) {
@@ -83,16 +75,11 @@ struct CuField {
 	vec2* velocity;
 	float* density;
 
-	vec2 cellSize;
-
 	const static int DIM = 640;
 
 	CuField() {}
 
 	void build(Field& f) {
-		float width = DIM;
-		float height = DIM;
-
 		cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
 		cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
 
@@ -106,8 +93,8 @@ struct CuField {
 	}
 
 	__device__ int toIndex(float x, float y) {
-		int i = (int) (x / cellSize.x);
-		int j = (int) (y / cellSize.y);
+		int i = (int) x;
+		int j = (int) y;
 		
 		if (i < 0 || j < 0) return -1;
 		if (i >= DIM || j >= DIM) return -1;
@@ -119,7 +106,7 @@ struct CuField {
 		float x = i / DIM;
 		float y = j / DIM;
 	
-		return vec2((float) ((x + 0.5f) * cellSize.x), (float) ((y + 0.5f) * cellSize.y));
+		return vec2((float) (x + 0.5f), (float) (y + 0.5f));
 	}
 
 	__device__ vec2 getVelocity(int i) {
@@ -129,7 +116,8 @@ struct CuField {
 
 	__device__ vec2 getVelocity(float x, float y) {
 		int i = toIndex(x, y);
-		return getVelocity(i);
+		if (i == -1) return vec2(0, 0);
+		return velocity[i];
 	}
 
 	__device__ float getDensity(int i) {
