@@ -4,6 +4,9 @@
 struct DataBlock {
 	unsigned char *dev_bitmap;
 	CPUAnimBitmap *bitmap;
+
+	Field field;
+	// CuField cuField, prev_cuField;
 };
 
 __global__ void kernel(unsigned char *ptr, int ticks) {
@@ -13,7 +16,7 @@ __global__ void kernel(unsigned char *ptr, int ticks) {
 	int offset = x + y * blockDim.x * gridDim.x;
 }
 
-void generate_frame(DataBlock * d, int ticks) {
+void navier_step(DataBlock * d, int ticks) { 
 	dim3 blocks(Field::DIM/16, Field::DIM/16);
 	dim3 threads(16, 16);
 
@@ -35,10 +38,8 @@ int main( void ) {
 	DataBlock data;
 	CPUAnimBitmap bitmap(Field::DIM, Field::DIM, &data);
 
-	Field field;
-
 	for(int i = 0; i < Field::DIM * Field::DIM; i++) {
-		float grey = field.getDensity(i);
+		float grey = data.field.getDensity(i);
 		bitmap.pixels[(i * 4) + 0] = (int) (grey * 255.0f);
 		bitmap.pixels[(i * 4) + 1] = (int) (grey * 255.0f);
 		bitmap.pixels[(i * 4) + 2] = (int) (grey * 255.0f);
@@ -46,7 +47,6 @@ int main( void ) {
 	}
 
 	data.bitmap = &bitmap;
-
 
 	cudaMalloc((void**) &data.dev_bitmap, bitmap.image_size());
 
@@ -58,6 +58,6 @@ int main( void ) {
 	);
 
 	bitmap.anim_and_exit(
-			(void (*) (void *, int)) generate_frame,
+			(void (*) (void *, int)) navier_step,
 			(void (*) (void*)) cleanup);
 }

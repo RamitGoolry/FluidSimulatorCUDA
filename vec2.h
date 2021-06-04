@@ -13,19 +13,19 @@ struct vec2 {
 		y = y_;
 	}
 
-	vec2 operator + (vec2& other) {
+	__device__ vec2 operator + (vec2& other) {
 		return vec2(x + other.x, y + other.y);
 	}
 
-	vec2 operator - (vec2& other) {
+	__device__ vec2 operator - (vec2& other) {
 		return vec2(x - other.x, y - other.y);
 	}
 
-	vec2 operator * (float scalar) {
+	__device__ vec2 operator * (float scalar) {
 		return vec2(x * scalar, y * scalar);
 	}
 
-	float dot(vec2& other) {
+	__device__ float dot(vec2& other) {
 		return x * other.x + y * other.y;
 	}
 };

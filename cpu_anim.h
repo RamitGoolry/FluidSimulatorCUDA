@@ -58,7 +58,7 @@ struct CPUAnimBitmap {
         // a bug in the Windows GLUT implementation prevents us from
         // passing zero arguments to glutInit()
         int c=1;
-        char* dummy = "";
+        char* dummy = (char *) "";
         glutInit( &c, &dummy );
         glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA );
         glutInitWindowSize( width, height );

@@ -10,18 +10,13 @@ struct Field {
 	vec2* velocity;
 	float* density;
 	
-	vec2 start, cellSize;
+	vec2 cellSize;
 
 	const static int DIM = 640;
 
 	Field() {
-		start = vec2(0, 0);
-		vec2 end = vec2(DIM, DIM);
-
-		float width = end.x - start.x;
-		float height = end.y - start.y;
-
-		this->start = start;
+		float width = DIM;
+		float height = DIM;
 
 		velocity = (vec2 *) malloc(DIM * DIM * sizeof(vec2));
 		density = (float *) malloc(DIM * DIM * sizeof(vec2));
@@ -46,8 +41,8 @@ struct Field {
 	}
 
 	int toIndex(float x, float y) {
-		int i = (int) ((x - start.x) / cellSize.x);
-		int j = (int) ((y - start.y) / cellSize.y);
+		int i = (int) (x / cellSize.x);
+		int j = (int) (y / cellSize.y);
 		
 		if (i < 0 || j < 0) return -1;
 		if (i >= DIM || j >= DIM) return -1;
@@ -78,6 +73,71 @@ struct Field {
 	}
 
 	float getDensity(float x, float y) {
+		int i = toIndex(x, y);
+		if (i == -1) return 0;
+		return density[i];
+	}
+};
+
+struct CuField {
+	vec2* velocity;
+	float* density;
+
+	vec2 cellSize;
+
+	const static int DIM = 640;
+
+	CuField() {}
+
+	CuField(Field &f) {
+		float width = DIM;
+		float height = DIM;
+
+		cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
+		cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
+
+		cudaMemcpy(f.velocity, velocity, DIM * DIM * sizeof(vec2), cudaMemcpyDeviceToHost);
+		cudaMemcpy(f.density, density, DIM * DIM * sizeof(float), cudaMemcpyDeviceToHost);
+	}
+
+	~CuField() {
+		cudaFree(velocity);
+		cudaFree(density);
+	}
+
+	__device__ int toIndex(float x, float y) {
+		int i = (int) (x / cellSize.x);
+		int j = (int) (y / cellSize.y);
+		
+		if (i < 0 || j < 0) return -1;
+		if (i >= DIM || j >= DIM) return -1;
+
+		return (i * DIM) * j;
+	}
+
+	__device__ vec2 toCoordinate(int i, int j) {
+		float x = i / DIM;
+		float y = j / DIM;
+	
+		return vec2((float) ((x + 0.5f) * cellSize.x), (float) ((y + 0.5f) * cellSize.y));
+	}
+
+	__device__ vec2 getVelocity(int i) {
+		if(i == -1) return vec2(0, 0);
+		return velocity[i];
+	}
+
+	__device__ vec2 getVelocity(float x, float y) {
+		int i = toIndex(x, y);
+		return getVelocity(i);
+	}
+
+	__device__ float getDensity(int i) {
+		if (i == -1) return 0;
+		return density[i];
+	}
+
+	__device__ float getDensity(float x, float y) {
 		int i = toIndex(x, y);
 		if (i == -1) return 0;
 		return density[i];
