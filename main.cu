@@ -1,33 +1,45 @@
 #include "cpu_anim.h"
 #include "Field.cuh"
+#include "FluidSimulator.cuh"
 
 struct DataBlock {
 	unsigned char *dev_bitmap;
 	CPUAnimBitmap *bitmap;
 
 	Field field;
-	CuField cuField, prev_cuField;
+	CuField *cuField, *prev_cuField, *init_cuField;
 
 	DataBlock() {
-		cuField.build(field);
-		prev_cuField.build(field);
+		cuField = new CuField();
+		prev_cuField = new CuField();
+
+		init_cuField = new CuField();
+		init_cuField->build(field);
 	}
 };
 
-__global__ void kernel(unsigned char *ptr, int ticks) {
+__global__ void copy_kernel(float * iptr, const float * cptr) {	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
 	int offset = x + y * blockDim.x * gridDim.x;
-
+ 
+	iptr[offset] = cptr[offset]; // NOTE Test Speed vs when added if (cptr[offset] != 0)
 }
 
-void navier_step(DataBlock * d, int ticks) { 
+void navier_step(DataBlock * d, int ticks) {
+	// Define number of Blocks and Threads
 	dim3 blocks(Field::DIM/16, Field::DIM/16);
 	dim3 threads(16, 16);
 
-	kernel<<<blocks, threads>>> (d->dev_bitmap, ticks);
+	// kernel -> diffuse and advect
+	diffuse<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
 
+	CuField * temp = d->cuField;
+	d->cuField = d->prev_cuField;
+	d->prev_cuField = temp;
+
+	// Returning what we computed
 	cudaMemcpy(
 			d->bitmap->get_ptr(), 
 			d->dev_bitmap, 
@@ -44,8 +56,9 @@ int main( void ) {
 	DataBlock data;
 	CPUAnimBitmap bitmap(Field::DIM, Field::DIM, &data);
 
+	// Manually setting Output Bitmap to the field
 	for(int i = 0; i < Field::DIM * Field::DIM; i++) {
-		float grey = data.field.getDensity(i);
+		float grey = data.field.density[i];
 		bitmap.pixels[(i * 4) + 0] = (int) (grey * 255.0f);
 		bitmap.pixels[(i * 4) + 1] = (int) (grey * 255.0f);
 		bitmap.pixels[(i * 4) + 2] = (int) (grey * 255.0f);
