@@ -5,8 +5,49 @@
 #include <device_launch_parameters.h>
 
 #include "Field.cuh"
-#define DIFFUSION_RATE 5.0f
+#define DIFFUSION_RATE 1.0f
 #define DT 0.1f
+
+#define IX(i, j) ((i) + (Field::DIM) * (j))
+
+__global__ void advect(float* initD, float* currD, vec2* currV, unsigned char * bitmap) {
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
+
+	int offset = x + y * blockDim.x * gridDim.x;
+
+    if(offset >= Field::DIM*Field::DIM) return;
+
+    float dt0 = DT * Field::DIM;
+
+    float x_, y_;
+
+    x_ = x - dt0 * currV[offset].x;
+    y_ = y - dt0 * currV[offset].y;
+
+    if(x_ < 0.5) x_ = 0.5;
+    if(x_ > Field::DIM + 0.5) x_ = 0.5;
+    
+    if(y_ < 0.5) y_ = 0.5;
+    if(y_ > Field::DIM + 0.5) y_ = 0.5;
+    
+    int i0 = x_, j0 = y_;
+    int i1 = i0 + 1, j1 = j0 + 1;
+
+    float s1 = x_ - i0;
+    float s0 = 1 - s1;
+    float t1 = y_ - j0;
+    float t0 = 1 - t1;
+
+    currD[offset] = s0 * (currD[IX(i0, j0)] * t0 + currD[IX(i0, j1)] * t1) + s1 * (currD[IX(i1, j0)] * t0 + currD[IX(i1, j1)] * t1);
+
+    unsigned char grey = currD[offset] * 255;
+
+    bitmap[(offset << 2) + 0] = grey; 
+    bitmap[(offset << 2) + 1] = grey;
+    bitmap[(offset << 2) + 2] = grey;
+    bitmap[(offset << 2) + 3] = (unsigned char) 255;
+}
 
 __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char* bitmap) {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -27,7 +68,7 @@ __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char*
     currD[offset] = initD[offset] + a * (prevD[top] + prevD[bottom] + 
             prevD[left] + prevD[right]) / (1.0 + 4.0 * a);
 
-    unsigned char grey = initD[offset] * 255;
+    unsigned char grey = currD[offset] * 255;
 
     bitmap[(offset << 2) + 0] = grey; 
     bitmap[(offset << 2) + 1] = grey;

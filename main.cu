@@ -33,7 +33,8 @@ void navier_step(DataBlock * d, int ticks) {
 	dim3 threads(16, 16);
 
 	// kernel -> diffuse and advect
-	diffuse<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
+	// diffuse<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
+	advect<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->cuField->velocity, d->dev_bitmap);
 
 	CuField * temp = d->cuField;
 	d->cuField = d->prev_cuField;
