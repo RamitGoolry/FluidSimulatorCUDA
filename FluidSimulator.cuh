@@ -5,7 +5,7 @@
 #include <device_launch_parameters.h>
 
 #include "Field.cuh"
-#define A 0.001f
+#define DIFFUSION_RATE 5.0f
 #define DT 0.1f
 
 __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char* bitmap) {
@@ -22,8 +22,10 @@ __global__ void diffuse(float* initD, float* currD, float* prevD, unsigned char*
     int top = y == 0 ? offset - Field::DIM : offset;
     int bottom = y == Field::DIM - 1 ? offset + Field::DIM : offset;
 
-    currD[offset] = initD[offset] + A * (prevD[top] + prevD[bottom] + 
-            prevD[left] + prevD[right]) / (1.0 + 4.0 * A);
+    float a = DT * (Field::DIM * Field::DIM) * DIFFUSION_RATE;
+
+    currD[offset] = initD[offset] + a * (prevD[top] + prevD[bottom] + 
+            prevD[left] + prevD[right]) / (1.0 + 4.0 * a);
 
     unsigned char grey = initD[offset] * 255;
 

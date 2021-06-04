@@ -50,18 +50,16 @@ struct CuField {
 	const static int DIM = Field::DIM;
 
 	CuField() {
-		int s;
-		s = cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
-		s = cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
+		cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
+		cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
 
-		s = cudaMemset(velocity, 0 , DIM * DIM * sizeof(vec2));
-		s = cudaMemset(density, 0 , DIM * DIM * sizeof(float));
+		cudaMemset(velocity, 0 , DIM * DIM * sizeof(vec2));
+		cudaMemset(density, 0 , DIM * DIM * sizeof(float));
 	}
 
 	void build(Field& f) {
-		int s;	
-		s = cudaMemcpy(velocity, f.velocity, DIM * DIM * sizeof(vec2), cudaMemcpyHostToDevice);
-		s = cudaMemcpy(density, f.density, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(velocity, f.velocity, DIM * DIM * sizeof(vec2), cudaMemcpyHostToDevice);
+		cudaMemcpy(density, f.density, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
 	}
 
 	~CuField() {
