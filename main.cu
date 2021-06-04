@@ -2,7 +2,7 @@
 #include "Field.cuh"
 
 struct DataBlock {
-	unsigned char* dev_bitmap;
+	unsigned char *dev_bitmap;
 	CPUAnimBitmap *bitmap;
 };
 
@@ -35,9 +35,27 @@ int main( void ) {
 	DataBlock data;
 	CPUAnimBitmap bitmap(Field::DIM, Field::DIM, &data);
 
+	Field field;
+
+	for(int i = 0; i < Field::DIM * Field::DIM; i++) {
+		float grey = field.getDensity(i);
+		bitmap.pixels[(i * 4) + 0] = (int) (grey * 255.0f);
+		bitmap.pixels[(i * 4) + 1] = (int) (grey * 255.0f);
+		bitmap.pixels[(i * 4) + 2] = (int) (grey * 255.0f);
+		bitmap.pixels[(i * 4) + 3] = 255;
+	}
+
 	data.bitmap = &bitmap;
 
+
 	cudaMalloc((void**) &data.dev_bitmap, bitmap.image_size());
+
+	cudaMemcpy(
+		data.dev_bitmap,
+		data.bitmap->get_ptr(),
+		data.bitmap->image_size(),
+		cudaMemcpyHostToDevice
+	);
 
 	bitmap.anim_and_exit(
 			(void (*) (void *, int)) generate_frame,

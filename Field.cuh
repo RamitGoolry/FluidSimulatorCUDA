@@ -14,19 +14,17 @@ struct Field {
 
 	const static int DIM = 640;
 
-	Field(vec2 start, vec2 end) {
-		if(end.x < start.x) {
-			vec2 temp = start;
-			start = end;
-			end = temp;
-		}
+	Field() {
+		start = vec2(0, 0);
+		vec2 end = vec2(DIM, DIM);
 
 		float width = end.x - start.x;
 		float height = end.y - start.y;
 
 		this->start = start;
 
-		velocity = (vec2 *) calloc(DIM * DIM, sizeof(vec2));
+		velocity = (vec2 *) malloc(DIM * DIM * sizeof(vec2));
+		density = (float *) malloc(DIM * DIM * sizeof(vec2));
 
 		cellSize.x = width / DIM;
 		cellSize.y = height / DIM;
@@ -37,12 +35,17 @@ struct Field {
 		for(int i = 0; i < DIM * DIM; i++) {
 			velocity[i] = vec2(dist(generator), dist(generator));
 
-			int x = i / DIM; // TODO Define with Bezier
-			density[i] = int(x >= 0.48 && x <= 0.52);
+			float x = (float) i / (float) (DIM * DIM); // TODO Define with Bezier
+			density[i] = int(x >= 0.49 && x <= 0.51);
 		}
 	}
 
-	__device__ int toIndex(float x, float y) {
+	~Field() {
+		free(velocity);
+		free(density);
+	}
+
+	int toIndex(float x, float y) {
 		int i = (int) ((x - start.x) / cellSize.x);
 		int j = (int) ((y - start.y) / cellSize.y);
 		
@@ -52,31 +55,32 @@ struct Field {
 		return (i * DIM) * j;
 	}
 
-	__device__ vec2 toCoordinate(int i, int j) {
+	vec2 toCoordinate(int i, int j) {
 		float x = i / DIM;
 		float y = j / DIM;
 	
 		return vec2((float) ((x + 0.5f) * cellSize.x), (float) ((y + 0.5f) * cellSize.y));
 	}
 
-	__device__ vec2 getVelocity(int i) {
+	vec2 getVelocity(int i) {
 		if(i == -1) return vec2(0, 0);
 		return velocity[i];
 	}
 
-	__device__ vec2 getVelocity(float x, float y) {
+	vec2 getVelocity(float x, float y) {
 		int i = toIndex(x, y);
 		return getVelocity(i);
 	}
 
-	__device__ float getDensity(int i) {
+	float getDensity(int i) {
 		if (i == -1) return 0;
 		return density[i];
 	}
 
-	__device__ float getDensity(float x, float y) {
+	float getDensity(float x, float y) {
 		int i = toIndex(x, y);
-		return getDensity(i);
+		if (i == -1) return 0;
+		return density[i];
 	}
 };
 
