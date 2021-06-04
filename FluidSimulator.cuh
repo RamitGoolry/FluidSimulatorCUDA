@@ -5,12 +5,14 @@
 #include <device_launch_parameters.h>
 
 #include "Field.cuh"
-#define DIFFUSION_RATE 0.5f
+#define DIFFUSION_RATE 0.000001f
 #define DT 0.01f
+
+#define ITERS 5
 
 #define IX(i, j) ((i) + (Field::DIM) * (j))
 
-__device__ void set_bnd(int b, float * d) {
+__device__ void set_bnd_density(float * d) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -27,14 +29,14 @@ __device__ void set_bnd(int b, float * d) {
     if ( i == 0 || i == Field::DIM - 1) return;
     if ( j == 0 || j == Field::DIM - 1) return;
 
-    d[IX(i, 0)] = b == 2 ? -d[IX(i, 1)] : d[IX(i, 1)];
-    d[IX(i, Field::DIM - 1)] = b == 2 ? -d[IX(i, Field::DIM - 2)] : d[IX(i, Field::DIM - 2)];
+    d[IX(i, 0)] = d[IX(i, 1)];
+    d[IX(i, Field::DIM - 1)] = d[IX(i, Field::DIM - 2)];
 
-    d[IX(0, j)] = b == 2 ? -d[IX(1, j)] : d[IX(1, j)];
-    d[IX(Field::DIM - 1, 0)] = b == 2 ? -d[IX(Field::DIM - 2, 1)] : d[IX(Field::DIM - 2, 1)];
+    d[IX(0, j)] = d[IX(1, j)];
+    d[IX(Field::DIM - 1, 0)] = d[IX(Field::DIM - 2, 1)];
 }
 
-__global__ void advect(float* currD, vec2* currV, unsigned char * bitmap) {
+__global__ void advect_density(float* currD, vec2* currV, unsigned char * bitmap) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -64,13 +66,17 @@ __global__ void advect(float* currD, vec2* currV, unsigned char * bitmap) {
     float t0 = 1 - t1;
 
     currD[offset] = s0 * (currD[IX(i0, j0)] * t0 + currD[IX(i0, j1)] * t1) + s1 * (currD[IX(i1, j0)] * t0 + currD[IX(i1, j1)] * t1);
+    set_bnd_density(currD);
 }
 
-__device__ void lin_solve(int b, float* currD, float* prevD, float a, float c, int iters) {
-	int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
+__device__ void lin_solve_density(float* currD, float* prevD, float a, float c, int iters) {
+	int x_ = threadIdx.x + blockIdx.x * blockDim.x;
+	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
-	int offset = x + y * blockDim.x * gridDim.x;
+	int offset = x_ + y_ * blockDim.x * gridDim.x;
+
+    int x = offset / (Field::DIM * Field::DIM);
+    int y = offset % (Field::DIM * Field::DIM);
 
     if(offset >= Field::DIM * Field::DIM) return;
 
@@ -83,15 +89,15 @@ __device__ void lin_solve(int b, float* currD, float* prevD, float a, float c, i
     float cRecip = 1.0 / c;
 
     for(int k = 0; k < iters; k++) {
-        currD[offset] = (prevD[offset] + a * (currD[top] + currD[bottom] + currD[left] + currD[right])) * cRecip;
-        set_bnd(b, currD);
+        currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) * cRecip;
+        set_bnd_density(currD);
     }
 }
 
-__global__ void diffuse(float* currD, float* prevD, unsigned char* bitmap) {
+__global__ void diffuse_density(float* currD, float* prevD, unsigned char* bitmap) {
     float a = DT * (Field::DIM * Field::DIM) * DIFFUSION_RATE;
 
-    lin_solve(0, currD, prevD, a, 1 + 6.0 * a, 20);
+    lin_solve_density(currD, prevD, a, 1 + 4.0 * a, ITERS);
 }
 
 #endif
