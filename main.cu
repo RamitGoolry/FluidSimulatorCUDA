@@ -7,14 +7,13 @@ struct DataBlock {
 	CPUAnimBitmap *bitmap;
 
 	Field field;
-	CuField *cuField, *prev_cuField, *init_cuField;
+	CuField *cuField, *prev_cuField;
 
 	DataBlock() {
 		cuField = new CuField();
 		prev_cuField = new CuField();
 
-		init_cuField = new CuField();
-		init_cuField->build(field);
+		prev_cuField->build(field);
 	}
 };
 
@@ -41,9 +40,9 @@ void navier_step(DataBlock * d, int ticks) {
 	// diffuse<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
 
 	// Advection
-	// advect<<<blocks, threads>>> (d->init_cuField->density, d->cuField->density, d->cuField->velocity, d->dev_bitmap);
+	advect<<<blocks, threads>>> (d->cuField->density, d->cuField->velocity, d->dev_bitmap);
 
-	// copy_density_to_bitmap<<<blocks, threads>>> (d->dev_bitmap, d->cuField->density);
+	copy_density_to_bitmap<<<blocks, threads>>> (d->dev_bitmap, d->cuField->density);
 
 	CuField * temp = d->cuField;
 	d->cuField = d->prev_cuField;
