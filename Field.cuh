@@ -89,15 +89,15 @@ struct CuField {
 
 	CuField() {}
 
-	CuField(Field &f) {
+	void build(Field& f) {
 		float width = DIM;
 		float height = DIM;
 
 		cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
 		cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
 
-		cudaMemcpy(f.velocity, velocity, DIM * DIM * sizeof(vec2), cudaMemcpyDeviceToHost);
-		cudaMemcpy(f.density, density, DIM * DIM * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(f.velocity, velocity, DIM * DIM * sizeof(vec2), cudaMemcpyHostToDevice);
+		cudaMemcpy(f.density, density, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
 	}
 
 	~CuField() {

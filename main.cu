@@ -6,7 +6,12 @@ struct DataBlock {
 	CPUAnimBitmap *bitmap;
 
 	Field field;
-	// CuField cuField, prev_cuField;
+	CuField cuField, prev_cuField;
+
+	DataBlock() {
+		cuField.build(field);
+		prev_cuField.build(field);
+	}
 };
 
 __global__ void kernel(unsigned char *ptr, int ticks) {
