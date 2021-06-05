@@ -1,34 +1,36 @@
 #ifndef __FIELD_H__
 #define __FIELD_H__
 
-#include "vec2.h"
 #include <stdlib.h>
 
 #include <random>
 
 struct Field {
-	vec2* velocity;
-	float* density;
+	float *u, *v;
+	float *density;
 
-	const static int DIM = 640;
+	const static int DIM = 480;
 
 	Field() {
-		velocity = (vec2 *) calloc(DIM * DIM, sizeof(vec2));
+		u = (float *) calloc(DIM * DIM, sizeof(float));
+		v = (float *) calloc(DIM * DIM, sizeof(float));
 		density = (float *) calloc(DIM * DIM, sizeof(float));
 
 		std::default_random_engine generator;
-		std::uniform_real_distribution<float> dist(-0.5f, 0.5f);
+		std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
 		for(int i = 0; i < DIM * DIM; i++) {
-			velocity[i] = vec2(dist(generator), dist(generator));
+			u[i] = dist(generator);
+			v[i] = dist(generator);
 
-			float x = (float) (i % (DIM)) / DIM; // TODO Define with Bezier
+			float x = (float) (i / (DIM)) / DIM; // TODO Define with Bezier
 			density[i] = int(x >= 0.48 && x <= 0.52);
 		}
 	}
 
 	~Field() {
-		free(velocity);
+		free(u);
+		free(v);
 		free(density);
 	}
 
@@ -44,26 +46,30 @@ struct Field {
 };
 
 struct CuField {
-	vec2* velocity;
-	float* density;
+	float *u, *v;
+	float *density;
 
 	const static int DIM = Field::DIM;
 
 	CuField() {
-		cudaMalloc((void**) &velocity, DIM * DIM * sizeof(vec2));
+		cudaMalloc((void**) &u, DIM * DIM * sizeof(float));
+		cudaMalloc((void**) &v, DIM * DIM * sizeof(float));
 		cudaMalloc((void**) &density, DIM * DIM * sizeof(float));
 
-		cudaMemset(velocity, 0 , DIM * DIM * sizeof(vec2));
+		cudaMemset(u, 0 , DIM * DIM * sizeof(float));
+		cudaMemset(v, 0 , DIM * DIM * sizeof(float));
 		cudaMemset(density, 0 , DIM * DIM * sizeof(float));
 	}
 
 	void build(Field& f) {
-		cudaMemcpy(velocity, f.velocity, DIM * DIM * sizeof(vec2), cudaMemcpyHostToDevice);
+		cudaMemcpy(u, f.u, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(v, f.v, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
 		cudaMemcpy(density, f.density, DIM * DIM * sizeof(float), cudaMemcpyHostToDevice);
 	}
 
 	~CuField() {
-		cudaFree(velocity);
+		cudaFree(u);
+		cudaFree(v);
 		cudaFree(density);
 	}
 };
