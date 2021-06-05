@@ -66,13 +66,13 @@ void navier_step(DataBlock * d, int ticks) {
 	dim3 blocks(Field::DIM/16, Field::DIM/16);
 	dim3 threads(16, 16);
 
-	diffuse <<<blocks, threads>>> (
-		HORIZONTAL, d->cuField->u, d->prev_cuField->u
-	);
+	// diffuse <<<blocks, threads>>> (
+	// 	HORIZONTAL, d->cuField->u, d->prev_cuField->u
+	// );
 
-	diffuse <<<blocks, threads>>> (
-		VERTICAL, d->cuField->v, d->prev_cuField->v
-	);
+	// diffuse <<<blocks, threads>>> (
+	// 	VERTICAL, d->cuField->v, d->prev_cuField->v
+	// );
 
 	// project <<<blocks, threads>>> (
 	// 	d->prev_cuField->u, d->prev_cuField->v,
@@ -89,14 +89,14 @@ void navier_step(DataBlock * d, int ticks) {
 		d->prev_cuField->u, d->prev_cuField->v
    );
 
-	// project <<<blocks, threads>>> (
-	// 	d->cuField->u, d->cuField->v,
-	// 	d->prev_cuField->u, d->prev_cuField->v
-	// );
+// 	project <<<blocks, threads>>> (
+// 		d->cuField->u, d->cuField->v,
+// 		d->prev_cuField->u, d->prev_cuField->v
+// 	);
 
-	diffuse <<<blocks, threads>>> (
-		SCALAR, d->cuField->density, d->prev_cuField->density
-	);
+	// diffuse <<<blocks, threads>>> (
+	// 	SCALAR, d->cuField->density, d->prev_cuField->density
+	// );
 
 	advect<<<blocks, threads>>> (
 	 	SCALAR, d->cuField->density, d->prev_cuField->density, 
@@ -112,6 +112,10 @@ void navier_step(DataBlock * d, int ticks) {
 	// copy_velocity_to_bitmap <<<blocks, threads>>> (
 	// 	d->dev_bitmap,
 	// 	d->cuField->u, d->cuField->v
+	// );
+
+	// copy_density_to_bitmap <<<blocks, threads>>> (
+	// 	d->dev_bitmap, d->cuField->density
 	// );
 
 	CuField * temp = d->cuField;

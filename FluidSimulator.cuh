@@ -10,12 +10,12 @@
 #define HORIZONTAL 1
 #define VERTICAL 2
 
-#define DIFFUSION_RATE 500.0f
-#define DT 0.02f
+#define DIFFUSION_RATE 0.1f
+#define DT 0.005f
 
 #define VISC 10.0f
 
-#define ITERS 20
+#define ITERS 5
 
 #define IX(i, j) ((i) + (Field::DIM) * (j))
 
@@ -40,7 +40,7 @@ __device__ void set_bnd(int b, float * d) {
     d[IX(i, Field::DIM - 1)] = b == VERTICAL ? -d[IX(i, Field::DIM - 2)] : d[IX(i, Field::DIM - 2)];
 
     d[IX(0, j)] = b == HORIZONTAL ? -d[IX(1, j)] : d[IX(1, j)];
-    d[IX(Field::DIM - 1, 0)] = b == HORIZONTAL ? -d[IX(Field::DIM - 2, 1)] : d[IX(Field::DIM - 2, 1)];
+    d[IX(Field::DIM - 1, j)] = b == HORIZONTAL ? -d[IX(Field::DIM - 2, j)] : d[IX(Field::DIM - 2, j)];
 }
 
 __global__ void advect(int b, float* currD, float* prevD, float * u, float * v) {
