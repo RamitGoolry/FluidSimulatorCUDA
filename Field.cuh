@@ -22,7 +22,7 @@ struct Field {
 		for(int i = 0; i < DIM * DIM; i++) {
 			velocity[i] = vec2(dist(generator), dist(generator));
 
-			float x = (float) i / (float) (DIM * DIM); // TODO Define with Bezier
+			float x = (float) (i % (DIM)) / DIM; // TODO Define with Bezier
 			density[i] = int(x >= 0.48 && x <= 0.52);
 		}
 	}
