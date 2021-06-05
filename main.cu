@@ -72,9 +72,18 @@ void navier_step(DataBlock * d, int ticks) {
 		d->prev_cuField->u, d->prev_cuField->v
 	);
 
-	// project <<<blocks, threads>>> ();
+	project <<<blocks, threads>>> (
+		d->prev_cuField->u, d->prev_cuField->v,
+		d->cuField->u, d->cuField->v 
+	);
 
 	advect_velocity <<<blocks, threads>>> (
+		d->cuField->u, d->cuField->v,
+		d->prev_cuField->u, d->prev_cuField->v
+	);
+
+
+	project <<<blocks, threads>>> (
 		d->cuField->u, d->cuField->v,
 		d->prev_cuField->u, d->prev_cuField->v
 	);

@@ -6,7 +6,7 @@
 
 #include "Field.cuh"
 
-#define DIFFUSION_RATE 0.5f
+#define DIFFUSION_RATE 500.f
 #define DT 0.001f
 
 #define VISC 1.0f
@@ -226,6 +226,9 @@ __global__ void project(float* u, float*v, float* p, float* div) {
 
     int i = offset / (Field::DIM * Field::DIM);
     int j = offset % (Field::DIM * Field::DIM);
+
+    if ( i == 0 || i == Field::DIM - 1) return;
+    if ( j == 0 || j == Field::DIM - 1) return;
 
     div[IX(i, j)] = -0.5f * h * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
     p[IX(i, j)] = 0;
