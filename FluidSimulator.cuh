@@ -44,29 +44,29 @@ __device__ void set_bnd(int b, float * d) {
 }
 
 __global__ void advect(int b, float* currD, float* prevD, float * u, float * v) {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
+    int x_ = threadIdx.x + blockIdx.x * blockDim.x;
+	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
-	int offset = x + y * blockDim.x * gridDim.x;
+	int offset = x_ + y_ * blockDim.x * gridDim.x;
 
     if(offset >= Field::DIM*Field::DIM) return;
 
     float dt0 = DT * Field::DIM;
 
-    float x_, y_;
+    float x, y;
 
-    x_ = x - dt0 * u[offset];
-    y_ = y - dt0 * v[offset]; 
+    x = x_ - dt0 * u[offset];
+    y = y_ - dt0 * v[offset]; 
 
-    x_ = max(0.5f, min(Field::DIM - 1.5, x_));
-    y_ = max(0.5f, min(Field::DIM - 1.5, y_));    
+    x = max(0.5f, min(Field::DIM - 1.5, x));
+    y = max(0.5f, min(Field::DIM - 1.5, y));    
     
-    int i0 = x_, j0 = y_;
+    int i0 = x, j0 = y;
     int i1 = i0 + 1, j1 = j0 + 1;
 
-    float s1 = x_ - i0;
+    float s1 = x - i0;
     float s0 = 1 - s1;
-    float t1 = y_ - j0;
+    float t1 = y - j0;
     float t0 = 1 - t1;
 
     currD[offset] = 
