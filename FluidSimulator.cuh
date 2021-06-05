@@ -36,7 +36,7 @@ __device__ void set_bnd_density(float * d) {
     d[IX(Field::DIM - 1, 0)] = d[IX(Field::DIM - 2, 1)];
 }
 
-__global__ void advect_density(float* currD, vec2* currV, unsigned char * bitmap) {
+__global__ void advect_density(float* currD, float* prevD,vec2* currV, unsigned char * bitmap) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -65,7 +65,10 @@ __global__ void advect_density(float* currD, vec2* currV, unsigned char * bitmap
     float t1 = y_ - j0;
     float t0 = 1 - t1;
 
-    currD[offset] = s0 * (currD[IX(i0, j0)] * t0 + currD[IX(i0, j1)] * t1) + s1 * (currD[IX(i1, j0)] * t0 + currD[IX(i1, j1)] * t1);
+    currD[offset] = 
+        s0 * (prevD[IX(i0, j0)] * t0 + prevD[IX(i0, j1)] * t1) + 
+        s1 * (prevD[IX(i1, j0)] * t0 + prevD[IX(i1, j1)] * t1);
+
     set_bnd_density(currD);
 }
 

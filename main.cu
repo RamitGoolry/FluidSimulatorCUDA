@@ -39,7 +39,7 @@ void navier_step(DataBlock * d, int ticks) {
 	// Diffusion
 	diffuse_density<<<blocks, threads>>> (d->cuField->density, d->prev_cuField->density, d->dev_bitmap);
 	// Advection
-	advect_density<<<blocks, threads>>> (d->cuField->density, d->cuField->velocity, d->dev_bitmap);
+	advect_density<<<blocks, threads>>> (d->cuField->density, d->prev_cuField->density, d->cuField->velocity, d->dev_bitmap);
 
 	copy_density_to_bitmap<<<blocks, threads>>> (d->dev_bitmap, d->cuField->density);
 
