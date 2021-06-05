@@ -75,67 +75,58 @@ __global__ void advect_density(float* currD, float* prevD, float * u, float * v)
     set_bnd(0, currD);
 }
 
-__device__ void lin_solve_density(float* currD, float* prevD, float a, float c) {
-	int x_ = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void diffuse_density(float* currD, float* prevD) {
+    int x_ = threadIdx.x + blockIdx.x * blockDim.x;
 	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
 	int offset = x_ + y_ * blockDim.x * gridDim.x;
 
-    int x = offset / (Field::DIM * Field::DIM);
-    int y = offset % (Field::DIM * Field::DIM);
-
     if(offset >= Field::DIM * Field::DIM) return;
+    
+    int i = offset / (Field::DIM * Field::DIM);
+    int j = offset % (Field::DIM * Field::DIM);
 
-    int left = x == 0 ? offset - 1 : offset;
-    int right = x == Field::DIM - 1 ? offset + 1 : offset;
+    int left = offset - 1;
+    int right = offset + 1;
 
-    int top = y == 0 ? offset - Field::DIM : offset;
-    int bottom = y == Field::DIM - 1 ? offset + Field::DIM : offset;
+    int top = offset - Field::DIM;
+    int bottom = offset + Field::DIM;
 
-    float cRecip = 1.0 / c;
+    float a = DT * (Field::DIM * Field::DIM) * DIFFUSION_RATE;
+    float c = 1.0f * 4.0f * a;
 
     for(int k = 0; k < ITERS; k++) {
-        currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) * cRecip;
+        currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) / c;
         set_bnd(0, currD);
     }
 }
 
-__global__ void diffuse_density(float* currD, float* prevD) {
-    float a = DT * (Field::DIM * Field::DIM) * DIFFUSION_RATE;
-    lin_solve_density(currD, prevD, a, 1 + 4.0 * a);
-}
-
-__device__ void lin_solve_velocity(float* u, float * v, float* u0, float* v0, float a, float c) {
+__global__ void diffuse_velocity(float* u, float* v, float* u0, float* v0) {
 	int x_ = threadIdx.x + blockIdx.x * blockDim.x;
 	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
 	int offset = x_ + y_ * blockDim.x * gridDim.x;
 
+    if(offset >= Field::DIM * Field::DIM) return;
+
     int i = offset / (Field::DIM * Field::DIM);
     int j = offset % (Field::DIM * Field::DIM);
 
-    if(offset >= Field::DIM * Field::DIM) return;
+    int left = offset - 1;
+    int right = offset + 1;
 
-    int left = i == 0 ? offset - 1 : offset;
-    int right = i == Field::DIM - 1 ? offset + 1 : offset;
+    int top = offset - Field::DIM;
+    int bottom = offset + Field::DIM;
 
-    int top = j == 0 ? offset - Field::DIM : offset;
-    int bottom = j == Field::DIM - 1 ? offset + Field::DIM : offset;
-
-    float cRecip = 1.0 / c;
+    float a = DT * (Field::DIM * Field::DIM) * VISC;
+    float c = 1.0f + 4.0f * a;
 
     for(int k = 0; k < ITERS; k++) {
-        u[offset] = (u0[offset] + a * (u0[top] + u0[bottom] + u0[left] + u0[right])) * cRecip;
-        v[offset] = (v0[offset] + a * (v0[top] + v0[bottom] + v0[left] + v0[right])) * cRecip;
+        u[offset] = (u0[offset] + a * (u0[top] + u0[bottom] + u0[left] + u0[right])) / c;
+        v[offset] = (v0[offset] + a * (v0[top] + v0[bottom] + v0[left] + v0[right])) / c;
         set_bnd(1, u);
         set_bnd(2, v);
     }
-}
-
-// NOTE Bias to the right
-__global__ void diffuse_velocity(float* u, float* v, float* u0, float* v0) {
-    float a = DT * (Field::DIM * Field::DIM) * VISC;
-    lin_solve_velocity(u, v, u0, v0, a, 1 + 4.0 * a);
 }
 
 __global__ void advect_velocity(float* u, float* v, float* u0, float* v0) {

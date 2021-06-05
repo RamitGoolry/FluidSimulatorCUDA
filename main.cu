@@ -94,10 +94,10 @@ void navier_step(DataBlock * d, int ticks) {
 	);
 
 	// Advection
-	advect_density<<<blocks, threads>>> (
-		d->cuField->density, d->prev_cuField->density, 
-		d->cuField->u, d->cuField->v
-	);
+	// advect_density<<<blocks, threads>>> (
+	// 	d->cuField->density, d->prev_cuField->density, 
+	// 	d->cuField->u, d->cuField->v
+	// );
 
 	// Displaying Bitmap
 	// copy_DEBUG_bitmap <<<blocks, threads>>> (
