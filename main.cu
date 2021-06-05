@@ -66,12 +66,6 @@ void navier_step(DataBlock * d, int ticks) {
 	dim3 blocks(Field::DIM/16, Field::DIM/16);
 	dim3 threads(16, 16);
 
-	// Diffusion of the Velocity field
-	// diffuse_velocity <<<blocks, threads>>> (
-	// 	d->cuField->u, d->cuField->v, 
-	// 	d->prev_cuField->u, d->prev_cuField->v
-	// );
-
 	diffuse <<<blocks, threads>>> (
 		HORIZONTAL, d->cuField->u, d->prev_cuField->u
 	);
@@ -100,12 +94,10 @@ void navier_step(DataBlock * d, int ticks) {
 	// 	d->prev_cuField->u, d->prev_cuField->v
 	// );
 
-	// Diffusion
 	diffuse <<<blocks, threads>>> (
 		SCALAR, d->cuField->density, d->prev_cuField->density
 	);
 
-	Advection
 	advect<<<blocks, threads>>> (
 	 	SCALAR, d->cuField->density, d->prev_cuField->density, 
 	 	d->cuField->u, d->cuField->v
