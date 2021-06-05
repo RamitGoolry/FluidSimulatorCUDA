@@ -6,10 +6,14 @@
 
 #include "Field.cuh"
 
+#define SCALAR 0
+#define HORIZONTAL 1
+#define VERTICAL 2
+
 #define DIFFUSION_RATE 500.0f
 #define DT 0.003f
 
-#define VISC 1.0f
+#define VISC 0.0f
 
 #define ITERS 20
 
@@ -32,11 +36,11 @@ __device__ void set_bnd(int b, float * d) {
     if ( i == 0 || i == Field::DIM - 1) return;
     if ( j == 0 || j == Field::DIM - 1) return;
 
-    d[IX(i, 0)] = b == 2 ? -d[IX(i, 1)] : d[IX(i, 1)];
-    d[IX(i, Field::DIM - 1)] = b == 2 ? -d[IX(i, Field::DIM - 2)] : d[IX(i, Field::DIM - 2)];
+    d[IX(i, 0)] = b == VERTICAL ? -d[IX(i, 1)] : d[IX(i, 1)];
+    d[IX(i, Field::DIM - 1)] = b == VERTICAL ? -d[IX(i, Field::DIM - 2)] : d[IX(i, Field::DIM - 2)];
 
-    d[IX(0, j)] = b == 1 ? -d[IX(1, j)] : d[IX(1, j)];
-    d[IX(Field::DIM - 1, 0)] = b == 1 ? -d[IX(Field::DIM - 2, 1)] : d[IX(Field::DIM - 2, 1)];
+    d[IX(0, j)] = b == HORIZONTAL ? -d[IX(1, j)] : d[IX(1, j)];
+    d[IX(Field::DIM - 1, 0)] = b == HORIZONTAL ? -d[IX(Field::DIM - 2, 1)] : d[IX(Field::DIM - 2, 1)];
 }
 
 __global__ void advect_density(float* currD, float* prevD, float * u, float * v) {
@@ -54,11 +58,8 @@ __global__ void advect_density(float* currD, float* prevD, float * u, float * v)
     x_ = x - dt0 * u[offset];
     y_ = y - dt0 * v[offset];
 
-    if(x_ < 0.5) x_ = 0.5;
-    if(x_ > Field::DIM + 0.5) x_ = Field::DIM + 0.5;
-    
-    if(y_ < 0.5) y_ = 0.5;
-    if(y_ > Field::DIM + 0.5) y_ = Field::DIM + 0.5;
+    x_ = max(1.5f, min(Field::DIM - 1.5, x_));
+    y_ = max(1.5f, min(Field::DIM - 1.5, y_));    
     
     int i0 = x_, j0 = y_;
     int i1 = i0 + 1, j1 = j0 + 1;
@@ -72,7 +73,7 @@ __global__ void advect_density(float* currD, float* prevD, float * u, float * v)
         s0 * (prevD[IX(i0, j0)] * t0 + prevD[IX(i0, j1)] * t1) + 
         s1 * (prevD[IX(i1, j0)] * t0 + prevD[IX(i1, j1)] * t1);
 
-    set_bnd(0, currD);
+    set_bnd(SCALAR, currD);
 }
 
 __global__ void diffuse_density(float* currD, float* prevD) {
@@ -82,9 +83,6 @@ __global__ void diffuse_density(float* currD, float* prevD) {
 	int offset = x_ + y_ * blockDim.x * gridDim.x;
 
     if(offset >= Field::DIM * Field::DIM) return;
-    
-    int i = offset / (Field::DIM * Field::DIM);
-    int j = offset % (Field::DIM * Field::DIM);
 
     int left = offset - 1;
     int right = offset + 1;
@@ -97,7 +95,7 @@ __global__ void diffuse_density(float* currD, float* prevD) {
 
     for(int k = 0; k < ITERS; k++) {
         currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) / c;
-        set_bnd(0, currD);
+        set_bnd(SCALAR, currD);
     }
 }
 
@@ -108,9 +106,6 @@ __global__ void diffuse_velocity(float* u, float* v, float* u0, float* v0) {
 	int offset = x_ + y_ * blockDim.x * gridDim.x;
 
     if(offset >= Field::DIM * Field::DIM) return;
-
-    int i = offset / (Field::DIM * Field::DIM);
-    int j = offset % (Field::DIM * Field::DIM);
 
     int left = offset - 1;
     int right = offset + 1;
@@ -124,8 +119,8 @@ __global__ void diffuse_velocity(float* u, float* v, float* u0, float* v0) {
     for(int k = 0; k < ITERS; k++) {
         u[offset] = (u0[offset] + a * (u0[top] + u0[bottom] + u0[left] + u0[right])) / c;
         v[offset] = (v0[offset] + a * (v0[top] + v0[bottom] + v0[left] + v0[right])) / c;
-        set_bnd(1, u);
-        set_bnd(2, v);
+        set_bnd(HORIZONTAL, u);
+        set_bnd(VERTICAL, v);
     }
 }
 
@@ -144,30 +139,28 @@ __global__ void advect_velocity(float* u, float* v, float* u0, float* v0) {
     x_ = x - dt0 * u[offset];
     y_ = y - dt0 * v[offset];
 
-    if(x_ < 0.5) x_ = 0.5;
-    if(x_ > Field::DIM + 0.5) x_ = Field::DIM + 0.5;
-    
-    if(y_ < 0.5) y_ = 0.5;
-    if(y_ > Field::DIM + 0.5) y_ = Field::DIM + 0.5;
+    x_ = max(1.5f, min(Field::DIM - 1.5, x_));
+    y_ = max(1.5f, min(Field::DIM - 1.5, y_));
     
     int i0 = x_, j0 = y_;
     int i1 = i0 + 1, j1 = j0 + 1;
 
-    float s1 = x_ - i0;
-    float s0 = 1 - s1;
-    float t1 = y_ - j0;
-    float t0 = 1 - t1;
+    float s0 = x_ - i0;
+    float s1 = 1 - s0;
+    float t0 = y_ - j0;
+    float t1 = 1 - t0;
 
+    
     u[offset] = 
-        s0 * (u0[IX(i0, j0)] * t0 + u0[IX(i0, j1)] * t1) + 
-        s1 * (u0[IX(i1, j0)] * t0 + u0[IX(i1, j1)] * t1);
+        s0 * (t0 * u0[IX(i0, j0)] + t1 * u0[IX(i0, j1)]) + 
+        s1 * (t0 * u0[IX(i1, j0)] + t1 * u0[IX(i1, j1)]);
 
     v[offset] = 
-        s0 * (v0[IX(i0, j0)] * t0 + v0[IX(i0, j1)] * t1) + 
-        s1 * (v0[IX(i1, j0)] * t0 + v0[IX(i1, j1)] * t1);
+        s0 * (t0 * v0[IX(i0, j0)] + t1 * v0[IX(i0, j1)]) + 
+        s1 * (t0 * v0[IX(i1, j0)] + t1 * v0[IX(i1, j1)]);
 
-    set_bnd(1, u);
-    set_bnd(2, v);
+    set_bnd(HORIZONTAL, u);
+    set_bnd(VERTICAL, v);
 }
 
 __global__ void project(float* u, float*v, float* p, float* div) {
@@ -189,8 +182,8 @@ __global__ void project(float* u, float*v, float* p, float* div) {
     div[IX(i, j)] = -0.5f * h * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
     p[IX(i, j)] = 0;
 
-    set_bnd(0, div);
-    set_bnd(0, p);
+    set_bnd(SCALAR, div);
+    set_bnd(SCALAR, p);
 
     for(int k = 0; k < 20; k++) {
         p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) * 0.25f;
@@ -203,8 +196,8 @@ __global__ void project(float* u, float*v, float* p, float* div) {
     u[IX(i, j)] -= (p[IX(i + 1, j)] - p[IX(i - 1, j)]) / (2*h);
     v[IX(i, j)] -= (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / (2*h);
 
-    set_bnd(1, u);
-    set_bnd(2, v);
+    set_bnd(HORIZONTAL, u);
+    set_bnd(VERTICAL, v);
 }
 
 #endif

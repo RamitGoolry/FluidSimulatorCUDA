@@ -67,20 +67,20 @@ void navier_step(DataBlock * d, int ticks) {
 	dim3 threads(16, 16);
 
 	// Diffusion of the Velocity field
-	// diffuse_velocity <<<blocks, threads>>> (
-	// 	d->cuField->u, d->cuField->v, 
-	// 	d->prev_cuField->u, d->prev_cuField->v
-	// );
+	diffuse_velocity <<<blocks, threads>>> (
+		d->cuField->u, d->cuField->v, 
+		d->prev_cuField->u, d->prev_cuField->v
+	);
 
 	// project <<<blocks, threads>>> (
 	// 	d->prev_cuField->u, d->prev_cuField->v,
 	// 	d->cuField->u, d->cuField->v 
 	// );
 
-	// advect_velocity <<<blocks, threads>>> (
-	// 	d->cuField->u, d->cuField->v,
-	// 	d->prev_cuField->u, d->prev_cuField->v
-	// );
+	advect_velocity <<<blocks, threads>>> (
+		d->cuField->u, d->cuField->v,
+		d->prev_cuField->u, d->prev_cuField->v
+	);
 
 
 	// project <<<blocks, threads>>> (
@@ -88,16 +88,16 @@ void navier_step(DataBlock * d, int ticks) {
 	// 	d->prev_cuField->u, d->prev_cuField->v
 	// );
 
-	// Diffusion
+	// // Diffusion
 	diffuse_density<<<blocks, threads>>> (
 		d->cuField->density, d->prev_cuField->density
 	);
 
 	// Advection
-	// advect_density<<<blocks, threads>>> (
-	// 	d->cuField->density, d->prev_cuField->density, 
-	// 	d->cuField->u, d->cuField->v
-	// );
+	advect_density<<<blocks, threads>>> (
+		d->cuField->density, d->prev_cuField->density, 
+		d->cuField->u, d->cuField->v
+	);
 
 	// Displaying Bitmap
 	// copy_DEBUG_bitmap <<<blocks, threads>>> (
@@ -105,8 +105,8 @@ void navier_step(DataBlock * d, int ticks) {
 	// 	d->cuField->u, d->cuField->v
 	// );
 
-	copy_density_to_bitmap <<<blocks, threads>>> (
-		d->dev_bitmap, d->cuField->density
+	copy_DEBUG_bitmap <<<blocks, threads>>> (
+		d->dev_bitmap, d->cuField->density, d->cuField->u, d->cuField->v
 	);
 
 	CuField * temp = d->cuField;
