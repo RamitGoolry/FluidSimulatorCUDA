@@ -11,9 +11,9 @@
 #define VERTICAL 2
 
 #define DIFFUSION_RATE 500.0f
-#define DT 0.003f
+#define DT 0.02f
 
-#define VISC 0.0f
+#define VISC 10.0f
 
 #define ITERS 20
 
@@ -43,7 +43,7 @@ __device__ void set_bnd(int b, float * d) {
     d[IX(Field::DIM - 1, 0)] = b == HORIZONTAL ? -d[IX(Field::DIM - 2, 1)] : d[IX(Field::DIM - 2, 1)];
 }
 
-__global__ void advect_density(float* currD, float* prevD, float * u, float * v) {
+__global__ void advect(int b, float* currD, float* prevD, float * u, float * v) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -56,10 +56,10 @@ __global__ void advect_density(float* currD, float* prevD, float * u, float * v)
     float x_, y_;
 
     x_ = x - dt0 * u[offset];
-    y_ = y - dt0 * v[offset];
+    y_ = y - dt0 * v[offset]; 
 
-    x_ = max(1.5f, min(Field::DIM - 1.5, x_));
-    y_ = max(1.5f, min(Field::DIM - 1.5, y_));    
+    x_ = max(0.5f, min(Field::DIM - 1.5, x_));
+    y_ = max(0.5f, min(Field::DIM - 1.5, y_));    
     
     int i0 = x_, j0 = y_;
     int i1 = i0 + 1, j1 = j0 + 1;
@@ -73,10 +73,10 @@ __global__ void advect_density(float* currD, float* prevD, float * u, float * v)
         s0 * (prevD[IX(i0, j0)] * t0 + prevD[IX(i0, j1)] * t1) + 
         s1 * (prevD[IX(i1, j0)] * t0 + prevD[IX(i1, j1)] * t1);
 
-    set_bnd(SCALAR, currD);
+    set_bnd(b, currD);
 }
 
-__global__ void diffuse_density(float* currD, float* prevD) {
+__global__ void diffuse(int b, float* currD, float* prevD) {
     int x_ = threadIdx.x + blockIdx.x * blockDim.x;
 	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -95,72 +95,8 @@ __global__ void diffuse_density(float* currD, float* prevD) {
 
     for(int k = 0; k < ITERS; k++) {
         currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) / c;
-        set_bnd(SCALAR, currD);
+        set_bnd(b, currD);
     }
-}
-
-__global__ void diffuse_velocity(float* u, float* v, float* u0, float* v0) {
-	int x_ = threadIdx.x + blockIdx.x * blockDim.x;
-	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
-
-	int offset = x_ + y_ * blockDim.x * gridDim.x;
-
-    if(offset >= Field::DIM * Field::DIM) return;
-
-    int left = offset - 1;
-    int right = offset + 1;
-
-    int top = offset - Field::DIM;
-    int bottom = offset + Field::DIM;
-
-    float a = DT * (Field::DIM * Field::DIM) * VISC;
-    float c = 1.0f + 4.0f * a;
-
-    for(int k = 0; k < ITERS; k++) {
-        u[offset] = (u0[offset] + a * (u0[top] + u0[bottom] + u0[left] + u0[right])) / c;
-        v[offset] = (v0[offset] + a * (v0[top] + v0[bottom] + v0[left] + v0[right])) / c;
-        set_bnd(HORIZONTAL, u);
-        set_bnd(VERTICAL, v);
-    }
-}
-
-__global__ void advect_velocity(float* u, float* v, float* u0, float* v0) {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
-
-	int offset = x + y * blockDim.x * gridDim.x;
-
-    if(offset >= Field::DIM*Field::DIM) return;
-
-    float dt0 = DT * Field::DIM;
-
-    float x_, y_;
-
-    x_ = x - dt0 * u[offset];
-    y_ = y - dt0 * v[offset];
-
-    x_ = max(1.5f, min(Field::DIM - 1.5, x_));
-    y_ = max(1.5f, min(Field::DIM - 1.5, y_));
-    
-    int i0 = x_, j0 = y_;
-    int i1 = i0 + 1, j1 = j0 + 1;
-
-    float s0 = x_ - i0;
-    float s1 = 1 - s0;
-    float t0 = y_ - j0;
-    float t1 = 1 - t0;
-
-    
-    u[offset] = 
-        s0 * (t0 * u0[IX(i0, j0)] + t1 * u0[IX(i0, j1)]) + 
-        s1 * (t0 * u0[IX(i1, j0)] + t1 * u0[IX(i1, j1)]);
-
-    v[offset] = 
-        s0 * (t0 * v0[IX(i0, j0)] + t1 * v0[IX(i0, j1)]) + 
-        s1 * (t0 * v0[IX(i1, j0)] + t1 * v0[IX(i1, j1)]);
-
-    set_bnd(HORIZONTAL, u);
-    set_bnd(VERTICAL, v);
 }
 
 __global__ void project(float* u, float*v, float* p, float* div) {
