@@ -9,7 +9,7 @@ struct Field {
 	float *u, *v;
 	float *density;
 
-	const static int DIM = 480;
+	const static int DIM = 960;
 
 	Field() {
 		u = (float *) calloc(DIM * DIM, sizeof(float));

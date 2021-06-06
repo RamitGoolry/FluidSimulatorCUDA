@@ -43,7 +43,7 @@ __device__ void set_bnd(int b, float * d) {
     d[IX(Field::DIM - 1, j)] = b == HORIZONTAL ? -d[IX(Field::DIM - 2, j)] : d[IX(Field::DIM - 2, j)];
 }
 
-__global__ void advect(int b, float* currD, float* prevD, float * u, float * v) {
+__global__ void advect(int b, float* d, float* d0, float * u, float * v) {
     int x_ = threadIdx.x + blockIdx.x * blockDim.x;
 	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -69,14 +69,14 @@ __global__ void advect(int b, float* currD, float* prevD, float * u, float * v) 
     float t1 = y - j0;
     float t0 = 1 - t1;
 
-    currD[offset] = 
-        s0 * (prevD[IX(i0, j0)] * t0 + prevD[IX(i0, j1)] * t1) + 
-        s1 * (prevD[IX(i1, j0)] * t0 + prevD[IX(i1, j1)] * t1);
+    d[offset] = 
+        s0 * (d0[IX(i0, j0)] * t0 + d0[IX(i0, j1)] * t1) + 
+        s1 * (d0[IX(i1, j0)] * t0 + d0[IX(i1, j1)] * t1);
 
-    set_bnd(b, currD);
+    set_bnd(b, d);
 }
 
-__global__ void diffuse(int b, float* currD, float* prevD) {
+__global__ void diffuse(int b, float* d, float* d0) {
     int x_ = threadIdx.x + blockIdx.x * blockDim.x;
 	int y_ = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -94,8 +94,8 @@ __global__ void diffuse(int b, float* currD, float* prevD) {
     float c = 1.0f * 4.0f * a;
 
     for(int k = 0; k < ITERS; k++) {
-        currD[offset] = (prevD[offset] + a * (prevD[top] + prevD[bottom] + prevD[left] + prevD[right])) / c;
-        set_bnd(b, currD);
+        d[offset] = (d0[offset] + a * (d0[top] + d0[bottom] + d0[left] + d0[right])) / c;
+        set_bnd(b, d);
     }
 }
 
@@ -122,12 +122,12 @@ __global__ void project(float* u, float*v, float* p, float* div) {
     set_bnd(SCALAR, p);
 
     for(int k = 0; k < 20; k++) {
-        p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) * 0.25f;
+        p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) * 0.25f;
 
         __syncthreads();
     }
 
-    set_bnd(0, p);
+    set_bnd(SCALAR, p);
 
     u[IX(i, j)] -= (p[IX(i + 1, j)] - p[IX(i - 1, j)]) / (2*h);
     v[IX(i, j)] -= (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / (2*h);
